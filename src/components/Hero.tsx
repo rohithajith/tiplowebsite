@@ -31,13 +31,24 @@ export const Hero: React.FC<HeroProps> = ({ onRequestDemo }) => {
 
   return (
     <section className="relative min-h-screen pt-32 pb-20 overflow-hidden flex flex-col justify-between">
-      {/* Dynamic Background Glowing Orbs */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[850px] h-[550px] bg-gradient-to-b from-brand-600/15 via-purple-600/10 to-transparent blur-[130px] pointer-events-none rounded-full" />
-      <div className="absolute -top-32 right-10 w-[550px] h-[550px] bg-sky-500/10 blur-[140px] pointer-events-none rounded-full animate-pulse-slow" />
-      <div className="absolute top-1/2 -left-20 w-[450px] h-[450px] bg-purple-600/10 blur-[140px] pointer-events-none rounded-full" />
+      {/* Full-screen Background Anatomy Glow Photo */}
+      <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden -z-0">
+        <img
+          src="/hero-bg.jpg"
+          alt="Anatomical AI visualization"
+          className="w-full h-full object-cover object-center lg:object-[center_30%] opacity-80 sm:opacity-85 mix-blend-lighten filter brightness-105 contrast-120 saturate-125 drop-shadow-[0_0_100px_rgba(56,189,248,0.5)]"
+        />
+        {/* Balanced edge blending for crisp text contrast without hiding the glowing figure */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/88 via-[#030712]/30 to-[#030712]/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-transparent to-[#030712]/65" />
+      </div>
+
+      {/* Dynamic Background Glowing Orbs to amplify neon lighting */}
+      <div className="absolute top-1/4 right-1/4 w-[750px] h-[550px] bg-gradient-to-tr from-brand-500/30 via-purple-600/25 to-cyan-400/25 blur-[120px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/3 left-1/4 w-[550px] h-[550px] bg-indigo-600/20 blur-[130px] pointer-events-none rounded-full animate-pulse-slow" />
 
       {/* Cyber Grid Subtle Lines */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-25 pointer-events-none" />
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-center">
@@ -103,10 +114,10 @@ export const Hero: React.FC<HeroProps> = ({ onRequestDemo }) => {
             </motion.div>
           </div>
 
-          {/* Right Column: Holographic 3D Anatomical Visual Canvas */}
+          {/* Right Column: Holographic 3D Anatomical Visual Canvas with Image Backdrop */}
           <motion.div
             variants={itemVariants}
-            className="lg:col-span-5 relative flex items-center justify-center min-h-[440px] sm:min-h-[520px]"
+            className="lg:col-span-5 relative flex items-center justify-center min-h-[460px] sm:min-h-[540px]"
           >
             <HeroCanvas />
           </motion.div>
