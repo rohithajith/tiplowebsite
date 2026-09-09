@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, Sparkles } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export const HeroCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mousePosRef = useRef({ x: 0.5, y: 0.5 });
   const [activeExercise, setActiveExercise] = useState<'back' | 'knee' | 'neck' | 'shoulder'>('back');
-  const [catCowPhase, setCatCowPhase] = useState<'Cat' | 'Cow'>('Cat');
 
   // Track mouse coordinates for 3D parallax
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -35,6 +34,48 @@ export const HeroCanvas: React.FC = () => {
 
     window.addEventListener('resize', handleResize);
 
+    // Anatomical Joint Nodes Definition
+    const baseJoints = [
+      { id: 'head', x: 0.5, y: 0.13, label: 'Cranial Tracker' },
+      { id: 'neck', x: 0.5, y: 0.20, label: 'Cervical Spine' },
+      { id: 'l_shoulder', x: 0.38, y: 0.24, label: 'L. Shoulder' },
+      { id: 'r_shoulder', x: 0.62, y: 0.24, label: 'R. Shoulder' },
+      { id: 'l_elbow', x: 0.31, y: 0.37, label: 'L. Elbow' },
+      { id: 'r_elbow', x: 0.69, y: 0.37, label: 'R. Elbow' },
+      { id: 'l_wrist', x: 0.27, y: 0.51, label: 'L. Wrist' },
+      { id: 'r_wrist', x: 0.73, y: 0.51, label: 'R. Wrist' },
+      { id: 'spine_high', x: 0.5, y: 0.28, label: 'Thoracic T4' },
+      { id: 'spine_mid', x: 0.5, y: 0.36, label: 'Thoracic T8' },
+      { id: 'spine_low', x: 0.5, y: 0.48, label: 'Lumbar L4-L5' },
+      { id: 'l_hip', x: 0.43, y: 0.52, label: 'L. Hip' },
+      { id: 'r_hip', x: 0.57, y: 0.52, label: 'R. Hip' },
+      { id: 'l_knee', x: 0.41, y: 0.70, label: 'L. Knee' },
+      { id: 'r_knee', x: 0.59, y: 0.70, label: 'R. Knee' },
+      { id: 'l_ankle', x: 0.40, y: 0.88, label: 'L. Ankle' },
+      { id: 'r_ankle', x: 0.60, y: 0.88, label: 'R. Ankle' },
+    ];
+
+    const bones: [string, string][] = [
+      ['head', 'neck'],
+      ['neck', 'spine_high'],
+      ['spine_high', 'spine_mid'],
+      ['spine_mid', 'spine_low'],
+      ['neck', 'l_shoulder'],
+      ['neck', 'r_shoulder'],
+      ['l_shoulder', 'l_elbow'],
+      ['r_shoulder', 'r_elbow'],
+      ['l_elbow', 'l_wrist'],
+      ['r_elbow', 'r_wrist'],
+      ['spine_low', 'l_hip'],
+      ['spine_low', 'r_hip'],
+      ['l_hip', 'l_knee'],
+      ['r_hip', 'r_knee'],
+      ['l_knee', 'l_ankle'],
+      ['r_knee', 'r_ankle'],
+      ['l_shoulder', 'spine_high'],
+      ['r_shoulder', 'spine_high'],
+    ];
+
     // Background floating data particles
     const particles = Array.from({ length: 50 }, () => ({
       x: Math.random(),
@@ -48,15 +89,10 @@ export const HeroCanvas: React.FC = () => {
     let time = 0;
     let smoothMouseX = 0.5;
     let smoothMouseY = 0.5;
-    let poseTransition = activeExercise === 'back' ? 1 : 0; // 1 for tabletop Cat-Cow, 0 for standing
 
     const render = () => {
       time += 0.025;
       ctx.clearRect(0, 0, width, height);
-
-      // Interpolate pose transition
-      const targetTransition = activeExercise === 'back' ? 1 : 0;
-      poseTransition += (targetTransition - poseTransition) * 0.06;
 
       // Smooth mouse interpolation for parallax
       smoothMouseX += (mousePosRef.current.x - smoothMouseX) * 0.06;
@@ -79,112 +115,88 @@ export const HeroCanvas: React.FC = () => {
         ctx.fill();
       });
 
-      // 2. Compute Cat-Cow Kinematics for Back Pain
-      // Cat phase (arching up into flexion) <--> Cow phase (dipping down into extension)
-      const catCowSin = Math.sin(time * 1.4); // >0 for Cat (flexion arch), <0 for Cow (extension dip)
-      const catCowWave = catCowSin; // -1 to 1
+      // 2. Compute Kinematics
+      // Squat Cycle: Smooth sine-wave descent and ascent
+      const squatProgress = (Math.sin(time * 1.5) + 1) / 2; // 0 (standing) -> 1 (deep squat)
+      const squatDepthY = squatProgress * 0.085; // Upper body drops down
+      const squatKneeOutX = squatProgress * 0.045; // Knees track outwards safely
+      const squatKneeY = squatProgress * 0.035; // Knees lower slightly
+      const hipHingeBack = squatProgress * 0.012; // Controlled hip hinge for spine protection
 
-      // Tabletop Cat-Cow Joint Positions
-      // Cat: Head drops, Thoracic arches HIGH, Lumbar arches HIGH, Pelvis tucks
-      // Cow: Head lifts, Thoracic dips, Lumbar dips, Pelvis tilts up
-      const catCowJoints = {
-        head: { x: 0.26, y: 0.38 - catCowWave * 0.09 },
-        neck: { x: 0.33, y: 0.42 - catCowWave * 0.06 },
-        l_shoulder: { x: 0.38, y: 0.46 },
-        r_shoulder: { x: 0.42, y: 0.46 },
-        l_elbow: { x: 0.38, y: 0.60 },
-        r_elbow: { x: 0.42, y: 0.60 },
-        l_wrist: { x: 0.38, y: 0.74 },
-        r_wrist: { x: 0.42, y: 0.74 },
-        spine_high: { x: 0.44, y: 0.38 - catCowWave * 0.12 }, // Upper thoracic arch
-        spine_mid: { x: 0.51, y: 0.39 - catCowWave * 0.14 },  // Mid thoracic peak arch
-        spine_low: { x: 0.58, y: 0.41 - catCowWave * 0.12 },  // Lumbar lordosis/kyphosis
-        l_hip: { x: 0.65, y: 0.45 - catCowWave * 0.04 },
-        r_hip: { x: 0.69, y: 0.45 - catCowWave * 0.04 },
-        l_knee: { x: 0.65, y: 0.74 },
-        r_knee: { x: 0.69, y: 0.74 },
-        l_ankle: { x: 0.78, y: 0.74 },
-        r_ankle: { x: 0.82, y: 0.74 },
-      };
+      // Shoulder Elevation Cycle
+      const shoulderElev = Math.sin(time * 1.8) * 0.08;
 
-      // Standing Base Joint Positions (for Knee Rehab, Neck, Shoulder)
-      let kneeFlexionSin = Math.sin(time * 1.5);
-      let squatDepth = (Math.sin(time * 1.5) + 1) * 0.04;
-      let shoulderElevation = Math.sin(time * 1.8) * 0.08;
-      let neckTilt = Math.sin(time * 2.0) * 0.015;
+      // Neck Retraction Cycle
+      const neckTilt = Math.sin(time * 2.0) * 0.015;
 
-      const standingJoints = {
-        head: { x: 0.5 + (activeExercise === 'neck' ? neckTilt : 0), y: 0.13 + (activeExercise === 'knee' ? squatDepth : 0) },
-        neck: { x: 0.5 + (activeExercise === 'neck' ? neckTilt * 0.4 : 0), y: 0.20 + (activeExercise === 'knee' ? squatDepth : 0) },
-        l_shoulder: { x: 0.38, y: 0.24 + (activeExercise === 'knee' ? squatDepth : 0) },
-        r_shoulder: { x: 0.62, y: 0.24 + (activeExercise === 'knee' ? squatDepth : 0) },
-        l_elbow: { x: 0.31 - (activeExercise === 'shoulder' ? shoulderElevation * 0.6 : 0), y: 0.37 - (activeExercise === 'shoulder' ? shoulderElevation : 0) + (activeExercise === 'knee' ? squatDepth : 0) },
-        r_elbow: { x: 0.69 + (activeExercise === 'shoulder' ? shoulderElevation * 0.6 : 0), y: 0.37 - (activeExercise === 'shoulder' ? shoulderElevation : 0) + (activeExercise === 'knee' ? squatDepth : 0) },
-        l_wrist: { x: 0.27 - (activeExercise === 'shoulder' ? shoulderElevation * 0.6 : 0), y: 0.51 - (activeExercise === 'shoulder' ? shoulderElevation : 0) + (activeExercise === 'knee' ? squatDepth : 0) },
-        r_wrist: { x: 0.73 + (activeExercise === 'shoulder' ? shoulderElevation * 0.6 : 0), y: 0.51 - (activeExercise === 'shoulder' ? shoulderElevation : 0) + (activeExercise === 'knee' ? squatDepth : 0) },
-        spine_high: { x: 0.5, y: 0.28 + (activeExercise === 'knee' ? squatDepth : 0) },
-        spine_mid: { x: 0.5, y: 0.35 + (activeExercise === 'knee' ? squatDepth : 0) },
-        spine_low: { x: 0.5, y: 0.48 + (activeExercise === 'knee' ? squatDepth : 0) },
-        l_hip: { x: 0.43, y: 0.52 + (activeExercise === 'knee' ? squatDepth : 0) },
-        r_hip: { x: 0.57, y: 0.52 + (activeExercise === 'knee' ? squatDepth : 0) },
-        l_knee: { x: 0.41 - (activeExercise === 'knee' ? squatDepth * 0.5 : 0), y: 0.70 + (activeExercise === 'knee' ? squatDepth * 0.4 : 0) },
-        r_knee: { x: 0.59 + (activeExercise === 'knee' ? squatDepth * 0.5 : 0), y: 0.70 + (activeExercise === 'knee' ? squatDepth * 0.4 : 0) },
-        l_ankle: { x: 0.40, y: 0.88 },
-        r_ankle: { x: 0.60, y: 0.88 },
-      };
-
-      // Blend current joint positions
       const jointMap = new Map();
-      const keys = Object.keys(catCowJoints) as (keyof typeof catCowJoints)[];
 
-      keys.forEach((k) => {
-        const cj = catCowJoints[k];
-        const sj = standingJoints[k];
-        const lerpX = sj.x * (1 - poseTransition) + cj.x * poseTransition;
-        const lerpY = sj.y * (1 - poseTransition) + cj.y * poseTransition;
+      baseJoints.forEach((j) => {
+        let xOffset = 0;
+        let yOffset = 0;
 
-        const screenX = lerpX * width + mouseTiltX;
-        const screenY = lerpY * height + mouseTiltY;
+        if (activeExercise === 'back') {
+          // Squats with Lumbar Spinal Neutral Protection & Arm Counter-balance
+          if (['head', 'neck', 'l_shoulder', 'r_shoulder', 'spine_high', 'spine_mid', 'spine_low', 'l_hip', 'r_hip'].includes(j.id)) {
+            yOffset += squatDepthY;
+          }
+          // Arm counterbalance forward during squat
+          if (j.id === 'l_elbow' || j.id === 'r_elbow') {
+            yOffset += squatDepthY - squatProgress * 0.04;
+          }
+          if (j.id === 'l_wrist' || j.id === 'r_wrist') {
+            yOffset += squatDepthY - squatProgress * 0.07;
+          }
+          // Knee tracking
+          if (j.id === 'l_knee') {
+            xOffset -= squatKneeOutX;
+            yOffset += squatKneeY;
+          }
+          if (j.id === 'r_knee') {
+            xOffset += squatKneeOutX;
+            yOffset += squatKneeY;
+          }
+        } else if (activeExercise === 'knee') {
+          // Knee Rehab Squats
+          if (['head', 'neck', 'l_shoulder', 'r_shoulder', 'spine_high', 'spine_mid', 'spine_low', 'l_hip', 'r_hip'].includes(j.id)) {
+            yOffset += squatDepthY * 0.8;
+          }
+          if (j.id === 'l_knee') {
+            xOffset -= squatKneeOutX * 0.8;
+            yOffset += squatKneeY * 0.8;
+          }
+          if (j.id === 'r_knee') {
+            xOffset += squatKneeOutX * 0.8;
+            yOffset += squatKneeY * 0.8;
+          }
+        } else if (activeExercise === 'neck') {
+          // Cervical posture & retraction
+          if (j.id === 'head') {
+            xOffset += neckTilt;
+            yOffset -= Math.abs(neckTilt) * 0.5;
+          }
+          if (j.id === 'neck') {
+            xOffset += neckTilt * 0.4;
+          }
+        } else if (activeExercise === 'shoulder') {
+          // Shoulder ROM Abduction
+          if (j.id === 'l_elbow' || j.id === 'l_wrist') {
+            yOffset -= shoulderElev;
+            xOffset -= shoulderElev * 0.6;
+          }
+          if (j.id === 'r_elbow' || j.id === 'r_wrist') {
+            yOffset -= shoulderElev;
+            xOffset += shoulderElev * 0.6;
+          }
+        }
 
-        jointMap.set(k, { screenX, screenY, normX: lerpX, normY: lerpY });
+        const screenX = (j.x + xOffset) * width + mouseTiltX;
+        const screenY = (j.y + yOffset) * height + mouseTiltY;
+
+        jointMap.set(j.id, { ...j, screenX, screenY, normX: j.x + xOffset, normY: j.y + yOffset });
       });
 
-      // Connections / Bones for Cat-Cow & Skeleton
-      const bones: [string, string][] = [
-        ['head', 'neck'],
-        ['neck', 'spine_high'],
-        ['spine_high', 'spine_mid'],
-        ['spine_mid', 'spine_low'],
-        ['neck', 'l_shoulder'],
-        ['neck', 'r_shoulder'],
-        ['l_shoulder', 'l_elbow'],
-        ['r_shoulder', 'r_elbow'],
-        ['l_elbow', 'l_wrist'],
-        ['r_elbow', 'r_wrist'],
-        ['spine_low', 'l_hip'],
-        ['spine_low', 'r_hip'],
-        ['l_hip', 'l_knee'],
-        ['r_hip', 'r_knee'],
-        ['l_knee', 'l_ankle'],
-        ['r_knee', 'r_ankle'],
-        ['l_shoulder', 'spine_high'],
-        ['r_shoulder', 'spine_high'],
-      ];
-
-      // 3. Draw Floor Mat guideline when in Cat-Cow tabletop mode
-      if (poseTransition > 0.05) {
-        const matY = 0.76 * height + mouseTiltY;
-        ctx.beginPath();
-        ctx.moveTo(width * 0.15, matY);
-        ctx.lineTo(width * 0.88, matY);
-        ctx.strokeStyle = `rgba(56, 189, 248, ${0.3 * poseTransition})`;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 6]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      // 4. Draw Hologram Connection Beams (Bones)
+      // 3. Draw Hologram Connection Beams (Bones)
       bones.forEach(([fromId, toId]) => {
         const j1 = jointMap.get(fromId);
         const j2 = jointMap.get(toId);
@@ -194,7 +206,7 @@ export const HeroCanvas: React.FC = () => {
         ctx.beginPath();
         ctx.moveTo(j1.screenX, j1.screenY);
         ctx.lineTo(j2.screenX, j2.screenY);
-        ctx.strokeStyle = activeExercise === 'back' ? 'rgba(168, 85, 247, 0.3)' : 'rgba(99, 102, 241, 0.25)';
+        ctx.strokeStyle = activeExercise === 'back' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.25)';
         ctx.lineWidth = 5;
         ctx.stroke();
 
@@ -202,29 +214,12 @@ export const HeroCanvas: React.FC = () => {
         ctx.beginPath();
         ctx.moveTo(j1.screenX, j1.screenY);
         ctx.lineTo(j2.screenX, j2.screenY);
-        ctx.strokeStyle = activeExercise === 'back' ? 'rgba(56, 189, 248, 0.85)' : 'rgba(56, 189, 248, 0.7)';
+        ctx.strokeStyle = activeExercise === 'back' ? 'rgba(192, 132, 252, 0.85)' : 'rgba(56, 189, 248, 0.7)';
         ctx.lineWidth = 1.8;
         ctx.stroke();
       });
 
-      // 5. Draw Spinal Curvature Glow Trail specifically for Cat-Cow
-      if (poseTransition > 0.3) {
-        const spineNodes = ['head', 'neck', 'spine_high', 'spine_mid', 'spine_low', 'l_hip'];
-        ctx.beginPath();
-        const start = jointMap.get('head');
-        if (start) {
-          ctx.moveTo(start.screenX, start.screenY);
-          for (let i = 1; i < spineNodes.length; i++) {
-            const p = jointMap.get(spineNodes[i]);
-            if (p) ctx.lineTo(p.screenX, p.screenY);
-          }
-          ctx.strokeStyle = 'rgba(192, 132, 252, 0.5)';
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-      }
-
-      // 6. Draw Scanning Beam Sweep
+      // 4. Draw Radial Scanning Sweeps
       const scanY = ((Math.sin(time * 0.6) + 1) / 2) * height;
       ctx.beginPath();
       ctx.moveTo(width * 0.15, scanY);
@@ -235,21 +230,21 @@ export const HeroCanvas: React.FC = () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 7. Draw Pulsing Joint Nodes
+      // 5. Draw Pulsing Joint Nodes
       jointMap.forEach((j, key) => {
         const isSpine = ['spine_high', 'spine_mid', 'spine_low', 'neck', 'head'].includes(key);
-        const pulse = Math.sin(time * 4 + j.screenY * 0.05) * (isSpine && activeExercise === 'back' ? 3.5 : 2);
+        const pulse = Math.sin(time * 4 + j.screenY * 0.05) * (isSpine && activeExercise === 'back' ? 3.2 : 2);
 
-        // Outer ring
+        // Outer pulsing ring
         ctx.beginPath();
-        ctx.arc(j.screenX, j.screenY, (isSpine ? 9 : 7) + pulse, 0, Math.PI * 2);
+        ctx.arc(j.screenX, j.screenY, (isSpine ? 8.5 : 7) + pulse, 0, Math.PI * 2);
         ctx.strokeStyle = isSpine && activeExercise === 'back' ? 'rgba(192, 132, 252, 0.7)' : 'rgba(139, 92, 246, 0.5)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        // Glowing core
+        // Inner glowing core
         ctx.beginPath();
-        ctx.arc(j.screenX, j.screenY, isSpine ? 4.2 : 3.5, 0, Math.PI * 2);
+        ctx.arc(j.screenX, j.screenY, isSpine ? 4 : 3.5, 0, Math.PI * 2);
         ctx.fillStyle = isSpine && activeExercise === 'back' ? '#c084fc' : '#38bdf8';
         ctx.shadowColor = '#38bdf8';
         ctx.shadowBlur = 12;
@@ -257,34 +252,32 @@ export const HeroCanvas: React.FC = () => {
         ctx.shadowBlur = 0;
       });
 
-      // 8. Dynamic Clinical HUD Telemetry Callouts
+      // 6. Dynamic Clinical HUD Telemetry Callouts
       let activeCallouts: { id: string; text: string; score: string }[] = [];
 
       if (activeExercise === 'back') {
-        const isCat = catCowWave > 0;
-        const currentPhaseName = isCat ? 'Cat (Flexion)' : 'Cow (Extension)';
-        const spineFlexionAngle = (28 + Math.abs(catCowWave) * 14).toFixed(1);
-        const lordosisState = isCat ? 'Lumbar Decompression' : 'Lordosis Mobilisation';
+        const liveSquatDepthDeg = (70 + squatProgress * 42).toFixed(0);
+        const lumbarFlexion = (2.1 + squatProgress * 1.8).toFixed(1);
 
         activeCallouts = [
           {
-            id: 'spine_mid',
-            text: `Thoracolumbar: ${spineFlexionAngle}°`,
-            score: `Phase: ${currentPhaseName}`,
-          },
-          {
-            id: 'head',
-            text: isCat ? 'Cervical Flexion (Tucked)' : 'Cervical Extension (Lifted)',
-            score: '0° Compression',
-          },
-          {
             id: 'spine_low',
-            text: `L1-L5: ${lordosisState}`,
-            score: 'Spinal Articulation: 99.2%',
+            text: `Lumbar L4-L5: ${lumbarFlexion}° Flexion`,
+            score: 'Neutral Spine Maintained',
+          },
+          {
+            id: 'spine_mid',
+            text: 'Thoracic Stability: 99.4%',
+            score: 'Spinal Load: -42% (Optimal)',
+          },
+          {
+            id: 'l_knee',
+            text: `Hip Hinge Depth: ${liveSquatDepthDeg}°`,
+            score: 'Pelvic Symmetry: 99.1%',
           },
         ];
       } else if (activeExercise === 'knee') {
-        const liveKneeAngle = (138 + kneeFlexionSin * 18).toFixed(1);
+        const liveKneeAngle = (138 + (Math.sin(time * 1.5)) * 18).toFixed(1);
         activeCallouts = [
           {
             id: 'l_knee',
@@ -365,7 +358,7 @@ export const HeroCanvas: React.FC = () => {
         ctx.fillText(c.score, isLeft ? lineEndX - 8 : lineEndX + 8, lineEndY + 10);
       });
 
-      // 9. Mini Spinal Waveform Bio-Signal
+      // 7. Mini Spinal / Bio-Signal Waveform at bottom
       const waveY = height - 30;
       const waveXStart = width * 0.25;
       const waveWidth = width * 0.5;
@@ -448,7 +441,7 @@ export const HeroCanvas: React.FC = () => {
       <div className="absolute bottom-12 right-2 sm:right-4 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900/85 border border-purple-500/30 backdrop-blur-md shadow-xl">
         <Activity className="w-3.5 h-3.5 text-purple-400" />
         <span className="text-[11px] font-medium text-slate-200">
-          Spinal Accuracy: <strong className="text-purple-300">99.2%</strong>
+          Spinal Form Accuracy: <strong className="text-purple-300">99.4%</strong>
         </span>
       </div>
 
